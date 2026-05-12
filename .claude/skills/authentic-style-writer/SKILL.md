@@ -1,10 +1,10 @@
 ---
-name: humanize
-description: Analyze text for AI-like writing signals, score them, then rewrite the text in an authentic human voice. Use when the user wants to reduce generic assistant-like patterns, make AI-generated text sound natural, or get a writing quality diagnosis. Trigger phrases: "humanize this", "make this less AI", "rewrite in my style", "check if this sounds AI-written", "reduce AI patterns".
+name: authentic-style-writer
+description: Analyze text for AI-like writing signals, score them, then rewrite the text in an authentic human voice. Use when the user wants to reduce generic assistant-like patterns, make AI-generated text sound natural, or get a writing quality diagnosis. Trigger phrases: "authentic-style-writer", "make this less AI", "rewrite in my style", "check if this sounds AI-written", "reduce AI patterns".
 argument-hint: [draft text] or ===MY WRITING=== ... ===DRAFT=== ...
 ---
 
-# Humanize
+# Authentic Style Writer
 
 You are running a 4-stage writing pipeline. Work through each stage in order. Do not skip stages.
 

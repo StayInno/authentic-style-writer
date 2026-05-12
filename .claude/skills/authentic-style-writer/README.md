@@ -1,4 +1,4 @@
-# /humanize
+# /authentic-style-writer
 
 Аналізує текст на AI-подібні патерни, виставляє оцінку та переписує його в автентичному людському стилі.
 
@@ -6,7 +6,7 @@
 
 ## Встановлення
 
-Скіл вже знаходиться в `.claude/skills/humanize/` — Claude Code підхопить його автоматично при наступному запуску в цьому проєкті.
+Скіл вже знаходиться в `.claude/skills/authentic-style-writer/` — Claude Code підхопить його автоматично при наступному запуску в цьому проєкті.
 
 ---
 
@@ -17,7 +17,7 @@
 Просто передайте текст як аргумент:
 
 ```
-/humanize Certainly! It's worth noting that there are several important factors to consider when approaching this problem. Furthermore, it is advisable to leverage a holistic framework...
+/authentic-style-writer Certainly! It's worth noting that there are several important factors to consider when approaching this problem. Furthermore, it is advisable to leverage a holistic framework...
 ```
 
 Claude проаналізує текст, виставить оцінку AI-подібності та поверне переписану версію.
@@ -29,7 +29,7 @@ Claude проаналізує текст, виставить оцінку AI-п�
 Якщо ви хочете, щоб текст переписали **у вашому конкретному стилі**, додайте приклади власних текстів через маркери:
 
 ```
-/humanize
+/authentic-style-writer
 ===MY WRITING===
 [вставте 3–10 своїх текстів тут, мінімум 600 слів загалом]
 ===DRAFT===
@@ -88,6 +88,6 @@ Claude спочатку побудує **Style Card** — карту ваших 
 
 **Для сильного переписування** уточніть це в запиті:
 ```
-/humanize Rewrite aggressively, strong style change is OK.
+/authentic-style-writer Rewrite aggressively, strong style change is OK.
 [текст]
 ```
