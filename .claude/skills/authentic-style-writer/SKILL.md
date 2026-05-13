@@ -6,153 +6,281 @@ argument-hint: [draft text] or ===MY WRITING=== ... ===DRAFT=== ...
 
 # Authentic Style Writer
 
-You are running a 4-stage writing pipeline. Work through each stage in order. Do not skip stages.
+You are running a writing pipeline with explicit data hand-offs between stages. Each stage consumes the previous stage's output as a **constraint**, not a reference. Do not skip any stage. Do not produce a stage that ignores its required inputs.
+
+## Core principle — no hallucinated style
+
+You may only use stylistic moves that are either:
+- (a) present in the author's corpus (when corpus is provided), or
+- (b) explicitly chosen to remove an AI signal flagged in Analysis.
+
+You may **not** introduce a punctuation mark, sentence shape, opening, closing, or structural device just because it "sounds good." If a corpus exists and a device is not in it, the device is forbidden unless removing an AI signal demands it (and that demand is stated in the Replacement Map).
+
+---
 
 ## Input parsing
 
 Check `$ARGUMENTS` for one of two formats:
 
 **Format A — draft only:**
-The entire argument is the text to process. No style card will be built; use general human writing norms as the target.
+The entire argument is the text to process. Skip LEARN_STYLE and STYLE_BRIEF. Target = general human writing norms.
 
 **Format B — corpus + draft:**
-The argument contains both author samples and a draft, separated by markers:
 ```
 ===MY WRITING===
-[one or more author text samples]
+[one or more author samples]
 ===DRAFT===
-[the text to analyze and rewrite]
+[text to analyze and rewrite]
 ```
-When Format B is detected, run LEARN_STYLE before ANALYZE. If `$ARGUMENTS` is empty, ask the user to paste the text they want processed.
+
+When Format B is detected, count the samples and run LEARN_STYLE → STYLE_BRIEF before ANALYZE.
+
+If `$ARGUMENTS` is empty, ask the user to paste the text.
 
 ---
 
-## Stage 1 — LEARN_STYLE (only when author corpus is provided)
+## Stage 1 — LEARN_STYLE  *(Format B only)*
 
-Extract a compact style card from the author samples. Output it as a JSON block under the heading `## Style Card`.
+Output under heading `## Style Card`. Build it from **evidence only**. Every trait must carry a count.
+
+### Evidence rule
+
+Let `N` = total number of author samples.
+A trait is **stable** only if it appears in **≥ ⌈N/2⌉ samples and ≥ 2 samples total**.
+A trait that appears in fewer samples goes into `occasional_traits`, not `stable_traits`.
+If `N == 1`, no trait is "stable" — everything goes into `occasional_traits` and you flag the limitation.
+
+### Required counts before writing the card
+
+Before filling in the JSON, count and write a short evidence table:
+
+```
+Samples: N
+Avg sentence length (words): X
+Avg paragraph length (sentences): Y
+
+Punctuation per 1000 words across corpus:
+- em-dash (—):
+- en-dash (–):
+- ellipsis (…):
+- semicolon (;):
+- colon (:):
+- parentheses ( ):
+- exclamation (!):
+- question (?):
+
+Structural patterns (count of samples where this appears, out of N):
+- opens with name/product/person hook: x/N
+- opens with question: x/N
+- opens with numbered fact: x/N
+- ends with call-to-action: x/N
+- ends with question: x/N
+- ends with personal sign-off: x/N
+- uses bulleted lists: x/N
+- uses subheadings: x/N
+```
+
+You must produce this table **before** the JSON. If you cannot count a category, write `n/a` — never guess.
+
+### Lexical inventory
+
+List up to 30 **actual phrases** from the corpus that the author uses repeatedly or that carry their voice: connectors, fillers, idioms, dialectisms, signature expressions. Quote them verbatim. These are the words you can **reuse** in the rewrite.
+
+```
+Lexical inventory (verbatim from corpus):
+- connectors: [exact phrases]
+- dialectisms / regional forms: [exact phrases]
+- signature openers: [exact phrases]
+- signature closers / CTAs: [exact phrases]
+- repeated nouns / objects of attention: [exact phrases]
+```
+
+If a category is empty in the corpus, write `(none observed)`.
+
+### Style Card JSON
 
 ```json
 {
+  "samples_count": 0,
   "stable_traits": {
-    "lexical": "",
-    "sentence_length": "",
-    "rhythm": "",
-    "syntax_patterns": "",
-    "paragraph_density": "",
-    "punctuation_habits": "",
-    "transitions": "",
-    "rhetorical_moves": "",
-    "openings_closings": "",
-    "specificity_level": ""
+    "lexical": { "value": "", "evidence_count": 0 },
+    "sentence_length": { "value": "", "evidence_count": 0 },
+    "rhythm": { "value": "", "evidence_count": 0 },
+    "syntax_patterns": { "value": "", "evidence_count": 0 },
+    "paragraph_density": { "value": "", "evidence_count": 0 },
+    "punctuation_habits": { "value": "", "evidence_count": 0 },
+    "transitions": { "value": "", "evidence_count": 0 },
+    "rhetorical_moves": { "value": "", "evidence_count": 0 },
+    "openings": { "value": "", "evidence_count": 0 },
+    "closings": { "value": "", "evidence_count": 0 },
+    "specificity_level": { "value": "", "evidence_count": 0 }
   },
-  "weak_traits": [],
+  "structural_invariants": [
+    { "pattern": "", "evidence_count": 0 }
+  ],
+  "occasional_traits": [],
   "avoid_patterns": [],
   "limitations": ""
 }
 ```
 
 **Rules:**
-- `stable_traits`: patterns that repeat across multiple samples
-- `weak_traits`: things that appear once and may be topic or platform noise, not style
-- `avoid_patterns`: clichés, corporate phrasing, or constructions the author never uses
-- `limitations`: note if the corpus is too short or too uniform to draw reliable conclusions
+- `evidence_count` is the number of samples (out of `samples_count`) that show the trait. Stable requires ≥ ⌈N/2⌉.
+- `structural_invariants` are recurring shapes the author always uses: e.g. "ends with CTA", "headline names a person", "opens with a number". These must be carried into the rewrite if their count meets the stable threshold.
+- `avoid_patterns` are constructions the author **never** uses but the draft might (corporate clichés, em-dash if the corpus has none, etc.).
+- `limitations`: flag short or homogeneous corpora explicitly.
+
+---
+
+## Stage 1.5 — STYLE_BRIEF  *(Format B only)*
+
+This is the **bridge from card to rewrite**. Convert the Style Card into 5–10 numbered editing rules and a forbidden list. The rewrite MUST consume this brief. Output under `## Style Brief`.
+
+Format:
+
+```
+APPLY (each rule cites the trait it comes from):
+1. [rule] — from stable_traits.X (count Y/N)
+2. ...
+
+CARRY FORWARD (structural invariants that must appear in rewrite):
+- [invariant] — count Y/N
+
+DO NOT INTRODUCE (patterns not in corpus):
+- em-dash (—) [if corpus count is 0 or near-0]
+- semicolons [if corpus count is 0]
+- bulleted lists [if 0/N samples use them]
+- subheadings [if 0/N samples use them]
+- [other devices absent from corpus]
+
+DO NOT USE (avoid_patterns from card):
+- [pattern]
+```
+
+Each APPLY rule must be **actionable** ("use connector «ну і», «короче» — 4/6 samples") not vague ("conversational tone"). Each DO NOT INTRODUCE entry must reference a count of 0 or near-0 in the corpus.
 
 ---
 
 ## Stage 2 — ANALYZE
 
-Diagnose the draft. Output under the heading `## Analysis`.
+Output under heading `## Analysis`.
 
-**2a. AI-likeness score**
+### 2a. AI-likeness score
 
-Give a score from 0–10 where:
-- 0–2: reads naturally, minimal generic patterns
-- 3–4: a few smooth or templated moments, mostly fine
-- 5–6: noticeably assistant-like in several places
-- 7–8: heavily templated, generic structure, little personality
-- 9–10: almost entirely AI-typical writing
+`AI-likeness score: X/10` (calibration in [ai-signals.md](ai-signals.md))
+One-sentence verdict.
 
-State it as: `AI-likeness score: X/10`
+### 2b. Signal table
 
-Follow with a one-sentence verdict.
+| # | Signal type | Excerpt from draft | Why it's a problem |
+|---|-------------|--------------------|--------------------|
 
-**2b. Signal table**
+Signal types: see [ai-signals.md](ai-signals.md) — `hedge-cluster`, `over-explanation`, `even-pacing`, `abstract-filler`, `assistant-opener`, `comprehensiveness-creep`, `passive-excess`, `transition-cliche`, `symmetry-forced`, `enthusiasm-flatten`.
 
-List every AI-like signal found. See [ai-signals.md](ai-signals.md) for the full signal taxonomy. Format as a markdown table:
+### 2c. Style mismatch  *(Format B only)*
 
-| # | Signal type | Excerpt | Why it's a problem |
-|---|-------------|---------|-------------------|
+For each stable trait or structural invariant in the Style Card, check the draft. List divergences as:
+- `trait → what the draft does instead → quote from draft`
 
-Signal types to detect:
-- `hedge-cluster` — stacked hedges and qualifiers ("it's worth noting that", "it's important to consider")
-- `over-explanation` — restating the obvious, narrating what you're about to do
-- `even-pacing` — every sentence near the same length, no rhythm variation
-- `abstract-filler` — vague noun phrases that say nothing ("leverage synergies", "holistic approach")
-- `assistant-opener` — starts with "Certainly!", "Great question!", "Of course", "Absolutely"
-- `comprehensiveness-creep` — covering every angle even when not asked
-- `passive-excess` — excessive passive voice that buries agency
-- `transition-cliche` — "Furthermore", "Moreover", "It is worth noting", "In conclusion"
-- `symmetry-forced` — artificial parallel lists when prose would be more natural
-- `enthusiasm-flatten` — uniform positivity, no edge, no skepticism
+---
 
-**2c. Style mismatch** (only if style card was built)
+## Stage 2.5 — REPLACEMENT_MAP
 
-List specific places where the draft diverges from the author's stable traits.
+This is the **bridge from analysis to rewrite**. For every row in the signal table AND every row in the style mismatch list, produce a concrete replacement. Output under `## Replacement Map`.
+
+| # | Source | Excerpt (from draft) | Replacement (concrete words) | Justification |
+|---|--------|----------------------|------------------------------|---------------|
+
+- `Source` = signal type or `mismatch: <trait>`.
+- `Replacement` must be **actual proposed wording**, not a description. If a corpus exists, prefer phrases from the Lexical inventory.
+- `Justification` cites either Style Brief rule # or the AI signal removed.
+
+If a signal has no clean replacement (e.g. you'd need to delete the sentence), say `DELETE` and explain.
+
+The rewrite is built from this map. If the map is empty, the rewrite changes nothing.
 
 ---
 
 ## Stage 3 — REWRITE
 
-Rewrite the draft under the heading `## Rewritten Version`.
+Output under heading `## Rewritten Version`.
 
-Apply edits in this priority order:
-1. **Preserve meaning** — never change what is being said, only how it is said
-2. **Move toward author style** — if a style card exists, apply stable traits directly
-3. **Move away from generic assistant style** — remove every signal flagged in the table
+Execution order:
+1. Apply every row of the Replacement Map. Use the exact `Replacement` text wherever possible.
+2. Enforce every `CARRY FORWARD` invariant from the Style Brief (e.g. if the brief says "ends with CTA, 6/6", the rewrite must end with a CTA).
+3. Enforce every `DO NOT INTRODUCE` constraint. Re-read the rewrite once and remove any forbidden device that slipped in.
+4. Preserve meaning. No new claims, no removed claims.
 
-**Editing rules:**
-- Prefer targeted edits over full regeneration
-- Change sentence openings, rhythm, pacing, and transitions first
-- Replace abstract noun phrases with concrete or specific language
-- Break or vary uniform sentence lengths
-- Remove qualifiers and hedges that add no information
-- Cut over-explanation; trust the reader
-- If no style card: aim for direct, specific, uneven-rhythmed prose with personality
+Hard rules:
+- Do not add an em-dash, semicolon, ellipsis, bulleted list, or subheading if it is on the `DO NOT INTRODUCE` list.
+- Do not "polish" by introducing connectors, hedges, or transitions not in the Lexical inventory.
+- If you cannot apply a Replacement Map row, write a one-line note under the rewrite explaining why — do not silently skip it.
 
-Do not add new content or change the structure unless the structure itself is a signal.
+---
+
+## Stage 3.5 — TRACE
+
+This is the **bridge from rewrite to evaluation**. Output under `## Trace`.
+
+### 3.5a. Brief application check  *(Format B only)*
+
+| Style Brief rule | Applied? | Where in rewrite (quote) |
+|------------------|----------|--------------------------|
+
+Every numbered APPLY rule and every CARRY FORWARD invariant must appear in this table. `Applied?` is `yes` / `no` / `partial`. If `no` or `partial`, quote what is there instead.
+
+### 3.5b. Forbidden-pattern audit
+
+For each item on `DO NOT INTRODUCE` and `DO NOT USE`: did it appear in the rewrite? Count occurrences in the new text.
+
+| Forbidden item | Count in rewrite | Status |
+|----------------|------------------|--------|
+
+If any count > 0, the rewrite is **not done** — go back to Stage 3 and fix it before continuing.
+
+### 3.5c. Replacement Map coverage
+
+| Map row # | Applied as written? | If not, what was used |
+|-----------|---------------------|-----------------------|
+
+Coverage below 80% means the rewrite is incomplete — return to Stage 3.
 
 ---
 
 ## Stage 4 — EVALUATE
 
-Output under the heading `## Evaluation`.
+Output under heading `## Evaluation`. Scores must be derived from the Trace, not from feeling.
 
-Score three dimensions separately on a 1–10 scale with a one-sentence explanation each:
+| Dimension | Score | Derivation |
+|-----------|-------|------------|
+| Genericity reduction | /10 | (signals removed in Replacement Map) ÷ (signals detected) × 10 |
+| Meaning preservation | /10 | 10 minus 1 point per claim added, removed, or distorted |
+| Style match | /10 | (Brief rules + invariants applied) ÷ (total) × 10 — N/A if no corpus |
 
-| Dimension | Score | Note |
-|-----------|-------|------|
-| Genericity reduction | /10 | How much less assistant-like does it feel? |
-| Meaning preservation | /10 | Is everything from the original still present and accurate? |
-| Style match | /10 | How closely does it match the author's stable traits? (N/A if no corpus) |
-
-Then list **what changed** and **what stayed constant**:
+Then:
 
 **Changed (style):**
-- [bullet list of the main stylistic moves made]
+- [bullet list of actual moves made — must be traceable to Replacement Map or Style Brief]
 
 **Preserved (meaning):**
-- [bullet list confirming core content was kept intact]
+- [bullet list confirming each major claim from the original survived]
 
-If meaning preservation is below 8, flag it explicitly: `⚠ Meaning risk: [describe what may have shifted]`
+**Hallucinated style (must be empty):**
+- [any device used in rewrite that was not justified by Replacement Map or Style Brief — if non-empty, this is a defect, not a feature]
+
+If `Meaning preservation < 8`: `⚠ Meaning risk: [what shifted]`.
+If `Style match < 7` (Format B): `⚠ Style miss: [which brief rules failed]` and offer to re-run Stage 3 with stricter adherence.
 
 ---
 
 ## Output order
 
-Always output in this order:
-1. Style Card (if corpus provided)
-2. Analysis
-3. Rewritten Version
-4. Evaluation
+1. Style Card  *(Format B only)*
+2. Style Brief  *(Format B only)*
+3. Analysis
+4. Replacement Map
+5. Rewritten Version
+6. Trace
+7. Evaluation
 
-Keep each section under its heading. Do not mix them.
+Keep each section under its heading. Do not collapse or reorder.
