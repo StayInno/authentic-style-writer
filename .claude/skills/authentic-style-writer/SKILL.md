@@ -45,19 +45,29 @@ Output under heading `## Style Card`. Build it from **evidence only**. Every tra
 
 ### Evidence rule
 
-Let `N` = total number of author samples.
-A trait is **stable** only if it appears in **≥ ⌈N/2⌉ samples and ≥ 2 samples total**.
-A trait that appears in fewer samples goes into `occasional_traits`, not `stable_traits`.
-If `N == 1`, no trait is "stable" — everything goes into `occasional_traits` and you flag the limitation.
+Let `N` = total number of author samples and `W` = total words across the corpus.
+
+A trait is **stable** only when all three conditions hold:
+1. Trait appears in ≥ ⌈N/2⌉ samples and ≥ 2 samples total.
+2. `N ≥ 3`.
+3. `W ≥ 2000` words.
+
+Stylometry community baseline for reliable authorship signal is 2,000–5,000 words (Patel et al., STYLL; Eder 2015). Below that, individual style is not separable from topic noise.
+
+If any condition fails, every trait goes into `occasional_traits`, and the failure is named in `limitations` (e.g. "N=2 samples, W=1,100 words — traits treated as occasional"). When `W < 2000`, the Stage 4 Style match score is capped at 7/10 and the cap is stated in the Evaluation.
 
 ### Required counts before writing the card
 
 Before filling in the JSON, count and write a short evidence table:
 
 ```
-Samples: N
-Avg sentence length (words): X
-Avg paragraph length (sentences): Y
+Samples (N): ___
+Total words (W): ___
+Avg sentence length (words): ___
+Sentence-length stdDev (burstiness): ___
+Avg paragraph length (sentences): ___
+
+Burstiness reference: human writing typically shows sentence-length stdDev ≥ 5 (Tang et al., 2024). Default LLM output clusters at 0.2–0.4. stdDev < 1.5 reads as machine-paced. This number is the target the rewrite must hit.
 
 Punctuation per 1000 words across corpus:
 - em-dash (—):
@@ -102,6 +112,8 @@ If a category is empty in the corpus, write `(none observed)`.
 ```json
 {
   "samples_count": 0,
+  "corpus_word_count": 0,
+  "burstiness_stdev": 0.0,
   "stable_traits": {
     "lexical": { "value": "", "evidence_count": 0 },
     "sentence_length": { "value": "", "evidence_count": 0 },
@@ -118,6 +130,9 @@ If a category is empty in the corpus, write `(none observed)`.
   "structural_invariants": [
     { "pattern": "", "evidence_count": 0 }
   ],
+  "imitate_constructions": [
+    { "template": "", "example_from_corpus": "", "evidence_count": 0 }
+  ],
   "occasional_traits": [],
   "avoid_patterns": [],
   "limitations": ""
@@ -125,10 +140,13 @@ If a category is empty in the corpus, write `(none observed)`.
 ```
 
 **Rules:**
-- `evidence_count` is the number of samples (out of `samples_count`) that show the trait. Stable requires ≥ ⌈N/2⌉.
+- `evidence_count` is the number of samples (out of `samples_count`) that show the trait. Stable requires ≥ ⌈N/2⌉ AND `N ≥ 3` AND `W ≥ 2000`.
+- `corpus_word_count` (W): total words across all samples. Below 2,000 every trait is demoted to `occasional_traits`.
+- `burstiness_stdev`: standard deviation of sentence length (in words) across the corpus. Becomes the target pacing for the rewrite.
 - `structural_invariants` are recurring shapes the author always uses: e.g. "ends with CTA", "headline names a person", "opens with a number". These must be carried into the rewrite if their count meets the stable threshold.
+- `imitate_constructions` are concrete syntactic templates the author uses repeatedly (e.g. "short past-tense opener: «Купив X»", "two-clause negation: «не X, а Y»", "one-word emphatic close"). List 4–8 with a literal example from the corpus. These are what the rewrite must reach toward — removing AI signals is not the same as moving toward the target author's style (Patel et al., STYLL, 2024).
 - `avoid_patterns` are constructions the author **never** uses but the draft might (corporate clichés, em-dash if the corpus has none, etc.).
-- `limitations`: flag short or homogeneous corpora explicitly.
+- `limitations`: flag short or homogeneous corpora explicitly. Record `W < 2000` here when it occurs.
 
 ---
 
@@ -143,8 +161,15 @@ APPLY (each rule cites the trait it comes from):
 1. [rule] — from stable_traits.X (count Y/N)
 2. ...
 
+IMITATE (syntactic templates to actively copy — at least ⌈len/2⌉ must appear in rewrite):
+- [template]: «literal example from corpus» — count Y/N
+- ...
+
 CARRY FORWARD (structural invariants that must appear in rewrite):
 - [invariant] — count Y/N
+
+TARGET BURSTINESS:
+- corpus sentence-length stdDev: ___ (rewrite must land within ±1.5)
 
 DO NOT INTRODUCE (patterns not in corpus):
 - em-dash (—) [if corpus count is 0 or near-0]
@@ -157,7 +182,9 @@ DO NOT USE (avoid_patterns from card):
 - [pattern]
 ```
 
-Each APPLY rule must be **actionable** ("use connector «ну і», «короче» — 4/6 samples") not vague ("conversational tone"). Each DO NOT INTRODUCE entry must reference a count of 0 or near-0 in the corpus.
+Each APPLY rule must be **actionable** ("use connector «ну і», «короче» — 4/6 samples") not vague ("conversational tone"). Each IMITATE entry must quote a literal example from the corpus, so the rewrite has a concrete template to copy. Each DO NOT INTRODUCE entry must reference a count of 0 or near-0 in the corpus.
+
+**Why IMITATE exists:** removing AI signals reliably "moves away" from machine style but does not reliably "move toward" the target author (Patel et al., STYLL, 2024). Without explicit syntactic templates the rewrite drifts to generic-human writing instead of *this* author. IMITATE forces the rewrite to copy actual sentence shapes from the corpus.
 
 ---
 
@@ -168,6 +195,7 @@ Output under heading `## Analysis`.
 ### 2a. AI-likeness score
 
 `AI-likeness score: X/10` (calibration in [ai-signals.md](ai-signals.md))
+`Draft burstiness stdDev: X.X` (target: corpus stdDev in Format B, or ≥ 5 in Format A; < 1.5 is machine-paced)
 One-sentence verdict.
 
 ### 2b. Signal table
@@ -207,9 +235,11 @@ Output under heading `## Rewritten Version`.
 
 Execution order:
 1. Apply every row of the Replacement Map. Use the exact `Replacement` text wherever possible.
-2. Enforce every `CARRY FORWARD` invariant from the Style Brief (e.g. if the brief says "ends with CTA, 6/6", the rewrite must end with a CTA).
-3. Enforce every `DO NOT INTRODUCE` constraint. Re-read the rewrite once and remove any forbidden device that slipped in.
-4. Preserve meaning. No new claims, no removed claims.
+2. Inject IMITATE constructions from the Style Brief — at least ⌈len/2⌉ of the listed templates must appear in the rewrite. Use the corpus example as a *shape*, not a verbatim copy.
+3. Enforce every `CARRY FORWARD` invariant from the Style Brief (e.g. if the brief says "ends with CTA, 6/6", the rewrite must end with a CTA).
+4. Match TARGET BURSTINESS: the rewrite's sentence-length stdDev must land within ±1.5 of the corpus stdDev (or ≥ 5 in Format A). If too even, break up a long sentence with a short punchy one or merge two short ones into a long one.
+5. Enforce every `DO NOT INTRODUCE` constraint. Re-read the rewrite once and remove any forbidden device that slipped in.
+6. Preserve meaning. No new claims, no removed claims.
 
 Hard rules:
 - Do not add an em-dash, semicolon, ellipsis, bulleted list, or subheading if it is on the `DO NOT INTRODUCE` list.
@@ -227,9 +257,19 @@ This is the **bridge from rewrite to evaluation**. Output under `## Trace`.
 | Style Brief rule | Applied? | Where in rewrite (quote) |
 |------------------|----------|--------------------------|
 
-Every numbered APPLY rule and every CARRY FORWARD invariant must appear in this table. `Applied?` is `yes` / `no` / `partial`. If `no` or `partial`, quote what is there instead.
+Every numbered APPLY rule, every IMITATE template, and every CARRY FORWARD invariant must appear in this table. `Applied?` is `yes` / `no` / `partial`. If `no` or `partial`, quote what is there instead. IMITATE coverage below ⌈len/2⌉ means the rewrite is incomplete — return to Stage 3.
 
-### 3.5b. Forbidden-pattern audit
+### 3.5b. Burstiness check
+
+Measure the rewrite's sentence-length stdDev. Record:
+
+| Metric | Target | Rewrite | Within ±1.5? |
+|--------|--------|---------|--------------|
+| Sentence-length stdDev | (corpus stdDev, or ≥ 5 in Format A) | ___ | yes / no |
+
+If `no`, return to Stage 3 and adjust at least two sentences to widen or tighten the spread.
+
+### 3.5c. Forbidden-pattern audit
 
 For each item on `DO NOT INTRODUCE` and `DO NOT USE`: did it appear in the rewrite? Count occurrences in the new text.
 
@@ -238,7 +278,7 @@ For each item on `DO NOT INTRODUCE` and `DO NOT USE`: did it appear in the rewri
 
 If any count > 0, the rewrite is **not done** — go back to Stage 3 and fix it before continuing.
 
-### 3.5c. Replacement Map coverage
+### 3.5d. Replacement Map coverage
 
 | Map row # | Applied as written? | If not, what was used |
 |-----------|---------------------|-----------------------|
@@ -255,7 +295,8 @@ Output under heading `## Evaluation`. Scores must be derived from the Trace, not
 |-----------|-------|------------|
 | Genericity reduction | /10 | (signals removed in Replacement Map) ÷ (signals detected) × 10 |
 | Meaning preservation | /10 | 10 minus 1 point per claim added, removed, or distorted |
-| Style match | /10 | (Brief rules + invariants applied) ÷ (total) × 10 — N/A if no corpus |
+| Style match | /10 | (APPLY rules + IMITATE templates + invariants applied) ÷ (total) × 10 — N/A if no corpus. Capped at 7 when `W < 2000`. |
+| Burstiness match | /10 | 10 if rewrite stdDev within ±1.5 of target; subtract 2 per additional unit of drift. Floor 0. |
 
 Then:
 

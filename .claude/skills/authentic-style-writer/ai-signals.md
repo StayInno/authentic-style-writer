@@ -32,9 +32,15 @@ Reference for the ANALYZE stage. Each signal type includes a definition, typical
 
 ## even-pacing
 
-**Definition:** Every sentence in a paragraph is roughly the same length, producing a metronomic, monotonous rhythm. Human writers naturally vary sentence length for emphasis and flow.
+**Definition:** Every sentence in a paragraph is roughly the same length, producing a metronomic, monotonous rhythm. Human writers naturally vary sentence length for emphasis and flow. This is the "burstiness" axis.
 
-**Detection cues:** Count words per sentence. If the range is narrow (e.g., all 15–22 words) across a paragraph of 4+ sentences, flag it. LLMs tend toward medium-length sentences; humans mix short punchy sentences with longer ones.
+**Quantitative thresholds** (sentence-length stdDev in words across the passage):
+- ≥ 5 — human-typical bursty writing
+- 1.5–5 — moderate; flag only when other signals cluster
+- < 1.5 — machine-paced; almost always AI
+- 0.2–0.4 — GPT-4 default cluster (Tang et al., 2024 and follow-up detector work)
+
+**Detection cues:** Compute the stdDev of sentence length (in words) across any block of 4+ sentences. Report the measured number explicitly in Stage 2a — do not flag on impression alone. A signal table row for `even-pacing` must cite the stdDev value.
 
 ---
 
