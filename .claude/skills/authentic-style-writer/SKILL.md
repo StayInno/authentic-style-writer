@@ -69,6 +69,12 @@ Avg paragraph length (sentences): ___
 
 Burstiness reference: human writing typically shows sentence-length stdDev ≥ 5 (Tang et al., 2024). Default LLM output clusters at 0.2–0.4. stdDev < 1.5 reads as machine-paced. This number is the target the rewrite must hit.
 
+Lexical diversity reference: human short-form prose typically shows TTR ≈ 0.5–0.7 and Simpson's D ≈ 0.02–0.08 (content-words only, stopwords removed). LLMs cluster at lower TTR and higher Simpson's D — see Petryshak & Rybchak (2025), where Simpson's D is the top-ranked feature for distinguishing AI from human writing. Corpus values below become the rewrite targets.
+
+Lexical diversity (content-words only, stopwords removed):
+- Type-Token Ratio (TTR): ___
+- Simpson's Diversity Index (D): ___
+
 Punctuation per 1000 words across corpus:
 - em-dash (—):
 - en-dash (–):
@@ -114,8 +120,11 @@ If a category is empty in the corpus, write `(none observed)`.
   "samples_count": 0,
   "corpus_word_count": 0,
   "burstiness_stdev": 0.0,
+  "corpus_ttr": 0.0,
+  "corpus_simpsons_d": 0.0,
   "stable_traits": {
     "lexical": { "value": "", "evidence_count": 0 },
+    "lexical_diversity": { "value": "", "evidence_count": 0 },
     "sentence_length": { "value": "", "evidence_count": 0 },
     "rhythm": { "value": "", "evidence_count": 0 },
     "syntax_patterns": { "value": "", "evidence_count": 0 },
@@ -143,6 +152,7 @@ If a category is empty in the corpus, write `(none observed)`.
 - `evidence_count` is the number of samples (out of `samples_count`) that show the trait. Stable requires ≥ ⌈N/2⌉ AND `N ≥ 3` AND `W ≥ 2000`.
 - `corpus_word_count` (W): total words across all samples. Below 2,000 every trait is demoted to `occasional_traits`.
 - `burstiness_stdev`: standard deviation of sentence length (in words) across the corpus. Becomes the target pacing for the rewrite.
+- `corpus_ttr` and `corpus_simpsons_d`: Type-Token Ratio and Simpson's Diversity Index across the corpus, computed on **content words only** (stopwords removed). Both become rewrite targets in Stage 3 (±15% for TTR, ±20% for Simpson's D). See [ai-signals.md](ai-signals.md) `low-lexical-diversity` for formulas.
 - `structural_invariants` are recurring shapes the author always uses: e.g. "ends with CTA", "headline names a person", "opens with a number". These must be carried into the rewrite if their count meets the stable threshold.
 - `imitate_constructions` are concrete syntactic templates the author uses repeatedly (e.g. "short past-tense opener: «Купив X»", "two-clause negation: «не X, а Y»", "one-word emphatic close"). List 4–8 with a literal example from the corpus. These are what the rewrite must reach toward — removing AI signals is not the same as moving toward the target author's style (Patel et al., STYLL, 2024).
 - `avoid_patterns` are constructions the author **never** uses but the draft might (corporate clichés, em-dash if the corpus has none, etc.).
@@ -168,8 +178,10 @@ IMITATE (syntactic templates to actively copy — at least ⌈len/2⌉ must appe
 CARRY FORWARD (structural invariants that must appear in rewrite):
 - [invariant] — count Y/N
 
-TARGET BURSTINESS:
+TARGET STYLOMETRY:
 - corpus sentence-length stdDev: ___ (rewrite must land within ±1.5)
+- corpus TTR: ___ (rewrite must land within ±15%)
+- corpus Simpson's D: ___ (rewrite must land within ±20%)
 
 DO NOT INTRODUCE (patterns not in corpus):
 - em-dash (—) [if corpus count is 0 or near-0]
@@ -196,6 +208,7 @@ Output under heading `## Analysis`.
 
 `AI-likeness score: X/10` (calibration in [ai-signals.md](ai-signals.md))
 `Draft burstiness stdDev: X.X` (target: corpus stdDev in Format B, or ≥ 5 in Format A; < 1.5 is machine-paced)
+`Draft TTR: X.XX | Draft Simpson's D: X.XX` (content-words only, stopwords removed. Format B: targets = `corpus_ttr` / `corpus_simpsons_d` from Style Card. Format A: report only, no hard threshold — see [ai-signals.md](ai-signals.md) `low-lexical-diversity`.)
 One-sentence verdict.
 
 ### 2b. Signal table
@@ -203,7 +216,7 @@ One-sentence verdict.
 | # | Signal type | Excerpt from draft | Why it's a problem |
 |---|-------------|--------------------|--------------------|
 
-Signal types: see [ai-signals.md](ai-signals.md) — `hedge-cluster`, `over-explanation`, `even-pacing`, `abstract-filler`, `assistant-opener`, `comprehensiveness-creep`, `passive-excess`, `transition-cliche`, `symmetry-forced`, `enthusiasm-flatten`.
+Signal types: see [ai-signals.md](ai-signals.md) — `hedge-cluster`, `over-explanation`, `even-pacing`, `low-lexical-diversity`, `abstract-filler`, `assistant-opener`, `comprehensiveness-creep`, `passive-excess`, `transition-cliche`, `symmetry-forced`, `enthusiasm-flatten`.
 
 ### 2c. Style mismatch  *(Format B only)*
 
@@ -237,7 +250,11 @@ Execution order:
 1. Apply every row of the Replacement Map. Use the exact `Replacement` text wherever possible.
 2. Inject IMITATE constructions from the Style Brief — at least ⌈len/2⌉ of the listed templates must appear in the rewrite. Use the corpus example as a *shape*, not a verbatim copy.
 3. Enforce every `CARRY FORWARD` invariant from the Style Brief (e.g. if the brief says "ends with CTA, 6/6", the rewrite must end with a CTA).
-4. Match TARGET BURSTINESS: the rewrite's sentence-length stdDev must land within ±1.5 of the corpus stdDev (or ≥ 5 in Format A). If too even, break up a long sentence with a short punchy one or merge two short ones into a long one.
+4. Match TARGET STYLOMETRY:
+   - Sentence-length stdDev within ±1.5 of corpus stdDev (or ≥ 5 in Format A). If too even, break up a long sentence with a short punchy one or merge two short ones into a long one.
+   - TTR within ±15% of `corpus_ttr` (Format B only).
+   - Simpson's D within ±20% of `corpus_simpsons_d` (Format B only).
+   If TTR too low or Simpson's D too high: replace repeated content-words with synonyms or restructure to remove the repetition. Prefer vocabulary from the Lexical inventory before reaching for outside synonyms.
 5. Enforce every `DO NOT INTRODUCE` constraint. Re-read the rewrite once and remove any forbidden device that slipped in.
 6. Preserve meaning. No new claims, no removed claims.
 
@@ -259,15 +276,17 @@ This is the **bridge from rewrite to evaluation**. Output under `## Trace`.
 
 Every numbered APPLY rule, every IMITATE template, and every CARRY FORWARD invariant must appear in this table. `Applied?` is `yes` / `no` / `partial`. If `no` or `partial`, quote what is there instead. IMITATE coverage below ⌈len/2⌉ means the rewrite is incomplete — return to Stage 3.
 
-### 3.5b. Burstiness check
+### 3.5b. Stylometry check
 
-Measure the rewrite's sentence-length stdDev. Record:
+Measure the rewrite's sentence-length stdDev, TTR, and Simpson's D (content-words only). Record:
 
-| Metric | Target | Rewrite | Within ±1.5? |
-|--------|--------|---------|--------------|
-| Sentence-length stdDev | (corpus stdDev, or ≥ 5 in Format A) | ___ | yes / no |
+| Metric | Target | Rewrite | Within tolerance? |
+|--------|--------|---------|-------------------|
+| Sentence-length stdDev | (corpus stdDev, or ≥ 5 in Format A) | ___ | yes / no (±1.5) |
+| TTR | (`corpus_ttr`, Format B only) | ___ | yes / no (±15%) |
+| Simpson's D | (`corpus_simpsons_d`, Format B only) | ___ | yes / no (±20%) |
 
-If `no`, return to Stage 3 and adjust at least two sentences to widen or tighten the spread.
+If any row is `no`: return to Stage 3 and fix the offending dimension before continuing. For stdDev, vary sentence length. For TTR / Simpson's D, replace repeated content-words with synonyms (prefer Lexical inventory).
 
 ### 3.5c. Forbidden-pattern audit
 
@@ -296,7 +315,7 @@ Output under heading `## Evaluation`. Scores must be derived from the Trace, not
 | Genericity reduction | /10 | (signals removed in Replacement Map) ÷ (signals detected) × 10 |
 | Meaning preservation | /10 | 10 minus 1 point per claim added, removed, or distorted |
 | Style match | /10 | (APPLY rules + IMITATE templates + invariants applied) ÷ (total) × 10 — N/A if no corpus. Capped at 7 when `W < 2000`. |
-| Burstiness match | /10 | 10 if rewrite stdDev within ±1.5 of target; subtract 2 per additional unit of drift. Floor 0. |
+| Stylometry match | /10 | 10 if all three metrics (stdDev, TTR, Simpson's D) within tolerance. −2 per metric out of tolerance. −1 per additional unit of drift beyond. Floor 0. In Format A only stdDev is scored — TTR and Simpson's D are reported but not penalized. |
 
 Then:
 

@@ -44,6 +44,26 @@ Reference for the ANALYZE stage. Each signal type includes a definition, typical
 
 ---
 
+## low-lexical-diversity
+
+**Definition:** Звужений вокабуляр з повторами тих самих слів і коренів. LLM схильні переюзовувати лексику в межах одного відрізка тексту. Це другий за силою кількісний сигнал AI-тексту (після burstiness).
+
+**Quantitative measures** (compute on **content words only** — strip stopwords like `the/a/of/is/are` first, інакше короткі тексти штучно занижуються):
+
+- **Type-Token Ratio (TTR)** = `unique_content_words / total_content_words`. Lower = less diverse.
+- **Simpson's Diversity Index (D)** = `Σ (n_i / N)²` де `n_i` — частота content-word `i`, `N` — total content words. Інтерпретація: ймовірність, що два випадково обрані слова однакові. **Higher = less diverse** (more repetition).
+
+**Thresholds:**
+
+- **Format B (corpus provided):** порівнювати TTR і Simpson's D рерайту з відповідними метриками корпусу автора (записаними в Style Card як `corpus_ttr`, `corpus_simpsons_d`). Рерайт має лягти **в ±15% відносно corpus TTR** і **в ±20% відносно corpus Simpson's D**. Вихід за межі — сигнал у Stage 2 і причина повернутися на Stage 3.
+- **Format A (no corpus):** обчислити і повідомити TTR + Simpson's D у Stage 2a поруч із burstiness. **Не виставляти жорсткого порогу** — TTR сильно залежить від довжини тексту, тому без baseline це орієнтир, а не вирок. Прапор підіймати тільки якщо повтори видно очима (≥ 3 повтори того ж content-word на короткому відрізку, або кластер абстрактних іменників на кшталт `approach/framework/process`).
+
+**Detection cues:** ті самі content-words повторюються в сусідніх реченнях; вокабуляр зосереджений на загальних абстрактних іменниках (`approach`, `framework`, `process`, `solution`, `system`); відсутні синоніми попри явні приводи їх вжити.
+
+**Citation:** Petryshak T.V., Rybchak Z.L. 2025. *Stylometric Classification of AI-Generated Texts: Comparative Evaluation of Machine Learning Models.* Таврійський науковий вісник №2, pp. 135–147. DOI: [10.32782/tnv-tech.2025.2.15](https://doi.org/10.32782/tnv-tech.2025.2.15). На 30 000-семпловому датасеті (Human / ChatGPT / Deepseek) Simpson's D показано як **топ-1 ознаку** (feature importance 0.309 у Gradient Boosting, 0.184 у Random Forest), TTR — топ-2 (0.191 / 0.142). Binary Human-vs-AI Random Forest досягає macro F1 0.86 саме на цьому стилометричному наборі.
+
+---
+
 ## abstract-filler
 
 **Definition:** Vague noun phrases or buzzword constructions that gesture at meaning without delivering it.
