@@ -94,6 +94,15 @@ Structural patterns (count of samples where this appears, out of N):
 - ends with personal sign-off: x/N
 - uses bulleted lists: x/N
 - uses subheadings: x/N
+
+Optional grammar-level metrics (compute if `W ≥ 2000`; otherwise mark `n/a`):
+- stopword ratio (stopwords / total tokens): ___ (LLM English cluster: 0.35–0.45; human varies more widely 0.30–0.55. Source: Opara 2024, StyloAI, 31 stylometric features.)
+- noun ratio (nouns / total content words): ___
+- verb ratio: ___
+- adjective ratio: ___
+- pronoun-to-proper-noun ratio: ___ (see `pronoun-deficit` in [ai-signals.md](ai-signals.md); < 0.25 reads as machine-paced naming)
+
+These four ratios are **optional reference points**. They are reported in the Style Card but do not become hard rewrite targets. They exist so that Stage 2 can flag a draft whose grammar distribution diverges sharply from the corpus (e.g. corpus noun-ratio = 0.30 vs draft noun-ratio = 0.55).
 ```
 
 You must produce this table **before** the JSON. If you cannot count a category, write `n/a` — never guess.
@@ -122,6 +131,13 @@ If a category is empty in the corpus, write `(none observed)`.
   "burstiness_stdev": 0.0,
   "corpus_ttr": 0.0,
   "corpus_simpsons_d": 0.0,
+  "optional_grammar_metrics": {
+    "stopword_ratio": 0.0,
+    "noun_ratio": 0.0,
+    "verb_ratio": 0.0,
+    "adjective_ratio": 0.0,
+    "pronoun_to_proper_noun_ratio": 0.0
+  },
   "stable_traits": {
     "lexical": { "value": "", "evidence_count": 0 },
     "lexical_diversity": { "value": "", "evidence_count": 0 },
@@ -200,6 +216,42 @@ Each APPLY rule must be **actionable** ("use connector «ну і», «короч
 
 ---
 
+## Stage 1.7 — BOUNDARY_DETECTION  *(optional, both formats)*
+
+Skip this stage if the draft is **< 400 words** or has **fewer than 3 paragraphs**. Otherwise output under `## Boundary Detection`.
+
+This stage detects whether the draft is internally homogeneous or shows signs of mixed authorship (e.g. user-written text spliced with LLM-generated paragraphs). Stylometric profiles vary within a single document when sources differ.
+
+### Procedure
+
+For each paragraph in the draft, compute:
+- sentence-length stdDev
+- TTR (content-words only, stopwords removed)
+- a paragraph-local AI-likeness score 0–10 using the [ai-signals.md](ai-signals.md) taxonomy
+
+Then compute the document-mean of stdDev and TTR.
+
+### Output table
+
+| Paragraph # | stdDev | TTR | AI score | Flag |
+|------------:|-------:|----:|---------:|------|
+
+Flag a paragraph when **any** holds:
+- stdDev deviates by > 2 absolute units from doc mean
+- TTR deviates by > 20% relative from doc mean
+- paragraph AI score is ≥ 3 points higher than the lowest-scoring paragraph in the doc
+
+### Interpretation
+
+- **0–1 paragraphs flagged** → write `Profile: homogeneous. Treat the draft as a single block in Stage 2.`
+- **2+ paragraphs flagged with notably higher AI scores** → write `Profile: possible mixed authorship — paragraphs N, M show distinct stylometric profile and may have a different source than the rest.`
+
+This flag is **informational**. It does not split the rewrite or change Stage 3 execution — Stage 3 still produces one Final Rewrite for the whole draft. But Stage 2.5 should weight Replacement Map entries from flagged paragraphs more aggressively (they are the likeliest LLM-origin segments).
+
+**Citation:** Kumarage, T., Garland, J., Bhattacharjee, A., Trapeznikov, K., Ruston, S., Liu, H. 2023. *Stylometric Detection of AI-Generated Text in Twitter Timelines.* arXiv:2303.03697. Introduces change-point detection for stylometric boundaries within a single document — same logic adapted here for paragraph-level granularity.
+
+---
+
 ## Stage 2 — ANALYZE
 
 Output under heading `## Analysis`.
@@ -216,7 +268,7 @@ One-sentence verdict.
 | # | Signal type | Excerpt from draft | Why it's a problem |
 |---|-------------|--------------------|--------------------|
 
-Signal types: see [ai-signals.md](ai-signals.md) — `hedge-cluster`, `over-explanation`, `even-pacing`, `low-lexical-diversity`, `abstract-filler`, `assistant-opener`, `comprehensiveness-creep`, `passive-excess`, `transition-cliche`, `symmetry-forced`, `enthusiasm-flatten`.
+Signal types: see [ai-signals.md](ai-signals.md) — `hedge-cluster`, `over-explanation`, `even-pacing`, `low-lexical-diversity`, `redundancy`, `abstract-filler`, `assistant-opener`, `comprehensiveness-creep`, `passive-excess`, `pronoun-deficit`, `transition-cliche`, `symmetry-forced`, `syntactic-repetition`, `enthusiasm-flatten`.
 
 ### 2c. Style mismatch  *(Format B only)*
 
@@ -374,18 +426,33 @@ Then:
 If `Meaning preservation < 8`: `⚠ Meaning risk: [what shifted]`.
 If `Style match < 7` (Format B): `⚠ Style miss: [which brief rules failed]` and offer to re-run Stage 3 with stricter adherence.
 
+### Detection-resistance reference
+
+These mappings are heuristic, not measured against a specific detector. They anchor scale, not predict outcome:
+
+| Final AI-likeness score | Expected behavior under feature-based detectors |
+|------------------------:|--------------------------------------------------|
+| 0–2 / 10 | Likely **below** F1 0.81 — the StyloAI baseline on AuTexTification (Opara 2024). Rewrite would read as human to most stylometric classifiers. |
+| 3–5 / 10 | Boundary zone. Some signals still trigger; detectors trained on humanization-attacked corpora (Alshammari 2025, Mindner & Schaaff 2024) may still flag. |
+| 6+ / 10 | Likely classified as AI by feature-based detectors. Return to Stage 3 or run another Refinement Loop. |
+
+**Citations:**
+- Opara, C. 2024. *StyloAI: Distinguishing AI-Generated Content with Stylometric Analysis.* AIED 2024, Springer CCIS 2151. arXiv:2405.10129. F1 = 0.81 on the AuTexTification benchmark (160k+ texts, EN/ES, 5 domains, 6 generator models).
+- Sarvazyan, A. M. et al. 2023. *Overview of AuTexTification at IberLEF 2023.* *Procesamiento del Lenguaje Natural* 71, 275–288. The reference dataset against which stylometric detectors are scored.
+
 ---
 
 ## Output order
 
 1. Style Card  *(Format B only)*
 2. Style Brief  *(Format B only)*
-3. Analysis
-4. Replacement Map
-5. Rewritten Version  *(v1 — output of Stage 3)*
-6. Trace
-7. Refinement Log  *(iterations v2–v4 with early-exit notes)*
-8. Final Rewrite  *(the picked version; this is what Stage 4 evaluates)*
-9. Evaluation
+3. Boundary Detection  *(both formats, only when draft ≥ 400 words and ≥ 3 paragraphs)*
+4. Analysis
+5. Replacement Map
+6. Rewritten Version  *(v1 — output of Stage 3)*
+7. Trace
+8. Refinement Log  *(iterations v2–v4 with early-exit notes)*
+9. Final Rewrite  *(the picked version; this is what Stage 4 evaluates)*
+10. Evaluation
 
 Keep each section under its heading. Do not collapse or reorder.

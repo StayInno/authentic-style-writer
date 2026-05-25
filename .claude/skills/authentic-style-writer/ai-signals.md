@@ -64,6 +64,20 @@ Reference for the ANALYZE stage. Each signal type includes a definition, typical
 
 ---
 
+## redundancy
+
+**Definition:** Повторне формулювання тієї самої інформації різними словами в межах одного абзацу. Це не повтор слів (це `low-lexical-diversity`), а повтор **пропозицій / змісту** — кожне наступне речення дає нову форму, але не нову інформацію.
+
+**Examples:**
+- "The team finished the project on time. They completed the work as scheduled. The deliverables were submitted before the deadline." (три формулювання одного факту)
+- "This approach is effective. It produces good results. It works well in practice." (три майже-синонімічні речення)
+
+**Detection cues:** Сусідні речення, у яких друге/третє не несе нової претензії, лише перефразовує. Тест: якщо речення можна видалити без втрати інформації — це redundancy. Прапор піднімається, коли ≥ 30% речень у абзаці видаляються без втрати змісту. Відрізняється від `low-lexical-diversity`: там повторюються слова, тут повторюються **твердження**, навіть якщо лексика різна.
+
+**Citation:** Mitrović, S., Andreoletti, D., Ayoub, O. 2023. *ChatGPT or Human? Detect and Explain.* arXiv:2301.13852. SHAP-аналіз виділяє надлишковість серед топ-інтерпретованих ознак, що відрізняють короткий ChatGPT-текст від людського.
+
+---
+
 ## abstract-filler
 
 **Definition:** Vague noun phrases or buzzword constructions that gesture at meaning without delivering it.
@@ -118,6 +132,20 @@ Reference for the ANALYZE stage. Each signal type includes a definition, typical
 
 ---
 
+## pronoun-deficit
+
+**Definition:** Перевикористання власних назв і конкретних іменників замість анафоричних займенників (`він/вона/воно/it/they/this/that`). LLM схильні повторювати назву суб'єкта в кожному реченні замість підхопити її займенником — це дає неприродну іменну щільність і відчуття «тексту без короткої памʼяті».
+
+**Examples:**
+- "Marie went to the store. Marie bought apples. Marie returned home." (замість "Marie went to the store, bought apples, and returned home.")
+- "The framework provides benefits. The framework is widely used. The framework supports..." (замість чергування з `it` / `this approach`)
+
+**Detection cues:** Назва суб'єкта (власна назва або повторювана іменникова група) зустрічається 3+ рази в межах 4 сусідніх речень, тоді як одного анафоричного займенника було б достатньо. Співвідношення `proper-noun + повторений-іменник : анафоричний-займенник` > 4:1 на абзац — машинний підпис.
+
+**Citation:** Mitrović, Andreoletti, Ayoub 2023 (arXiv:2301.13852) — SHAP-аналіз показує дисбаланс власних назв і займенників серед топ-інтерпретованих ознак ChatGPT-тексту в коротких відгуках.
+
+---
+
 ## transition-cliche
 
 **Definition:** Formulaic connective phrases that signal structure instead of creating it organically.
@@ -144,6 +172,21 @@ Reference for the ANALYZE stage. Each signal type includes a definition, typical
 - Headers on every paragraph in a short response
 
 **Detection cues:** Lists where prose would work. Three-part structures that feel imposed. Numbered items that are not actually steps or enumerable things.
+
+---
+
+## syntactic-repetition
+
+**Definition:** Повтор тієї самої синтаксичної конструкції в кількох послідовних реченнях без риторичної потреби (на відміну від навмисного паралелізму). Відрізняється від `symmetry-forced` тим, що тут немає вимушеного списку — повторюється сам **порядок слів і скелет речення** в проз-блоці.
+
+**Examples:**
+- "X provides Y. A enables B. P facilitates Q." (три SVO-клаузи з ідентичною generic-verb структурою)
+- "By doing X, you can achieve Y. By using Z, you can ensure W. By applying V, you can deliver U." (три однакові `By -ing, you can [verb]` клаузи)
+- "It is important to note that... It is worth mentioning that... It is essential to understand that..." (повтор скелета `It is X to Y that...`)
+
+**Detection cues:** ≥ 3 послідовних речення з тим самим opening-pattern (`By X, ...`, `It is X that...`, `[Noun] is a [Adjective] [Noun] that...`) або з однаковим SVO-скелетом, у якому міняються лише іменники. Людський автор варіює синтаксичні рамки; LLM їх переюзовує.
+
+**Citation:** Mitrović et al. 2023 (як вище). Додатково: Kumarage, T., Garland, J., Bhattacharjee, A. et al. 2023. *Stylometric Detection of AI-Generated Text in Twitter Timelines.* arXiv:2303.03697 — phraseology-фічі включають повтор синтаксичних n-gram-патернів як один із найсильніших дискримінаторів.
 
 ---
 

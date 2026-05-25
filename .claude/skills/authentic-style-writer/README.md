@@ -74,15 +74,34 @@ Claude спочатку побудує **Style Card** — карту ваших 
 - **over-explanation** — переказ того, що читач вже знає
 - **even-pacing** — всі речення однакової довжини, немає ритму
 - **low-lexical-diversity** — звужений вокабуляр, ті ж content-words повторюються (метрики: TTR, Simpson's Diversity Index)
+- **redundancy** — повтор того самого змісту різними словами в межах абзацу (на відміну від `low-lexical-diversity`, повтор не слів, а пропозицій)
 - **abstract-filler** — розмиті фрази без конкретики (`"leverage synergies"`, `"holistic approach"`)
 - **assistant-opener** — початок з `"Certainly!"`, `"Great question!"`, `"Of course!"`
 - **comprehensiveness-creep** — охоплення всіх можливих кутів, хоча запит був конкретний
 - **passive-excess** — надмірний пасивний стан, який приховує суб'єкта
+- **pronoun-deficit** — повтор власних назв і конкретних іменників замість займенників (`"Marie went... Marie bought... Marie returned"` замість `"Marie went..., bought..., and returned"`)
 - **transition-cliche** — `"Furthermore"`, `"Moreover"`, `"In conclusion"`, `"It is worth noting"`
 - **symmetry-forced** — штучні паралельні списки там, де краще підійшла б проза
+- **syntactic-repetition** — повтор тієї самої синтаксичної конструкції в кількох сусідніх реченнях без потреби (`"X provides Y. A enables B. P facilitates Q."`)
 - **enthusiasm-flatten** — рівномірна позитивність без жодного критичного погляду
 
 Детальний опис кожного патерну з прикладами — у [ai-signals.md](ai-signals.md).
+
+---
+
+## Чому це працює — наукова валідація
+
+Підхід скілу (humanization-парафраз для обходу стилометричних детекторів) має пряме підтвердження в літературі:
+
+- **Sadasivan et al. 2023, *Can AI-Generated Text be Reliably Detected?*** — парафраз-атаки знижують точність детекторів **з 97% до 57–80%**, руйнують watermarking, нейромережні детектори та zero-shot класифікатори. Це базовий аргумент про те, чому humanization взагалі працює.
+- **Mindner, Schlippe & Schaaff 2023; Schaaff, Reinig & Schlippe 2024** — детектори дають F1 > 96% на сирому ChatGPT-тексті, але **тільки 78%** на парафразованому. Падіння в 18 пунктів — це benchmark очікуваного ефекту.
+- **Alshammari 2025** (arXiv:2507.17944) — humanization-атака на DeepSeek-v3-генерований текст знизила точність детекторів: Copyleaks → 71%, QuillBot → 58%, **GPTZero → 52%** (тобто близько до випадкового підкидання монети). Перший емпіричний тест humanization саме на DeepSeek.
+- **Opara 2024 (StyloAI)** — встановлює baseline F1 = 0.81 на бенчмарку AuTexTification (160k+ текстів, EN/ES, 6 моделей-генераторів). Скіл використовує цю цифру як орієнтир для secondary detection-resistance evaluation у Stage 4.
+- **Petryshak & Rybchak 2025** (DOI [10.32782/tnv-tech.2025.2.15](https://doi.org/10.32782/tnv-tech.2025.2.15)) — Simpson's D і TTR — топ-1 і топ-2 ознаки для розрізнення Human / ChatGPT / DeepSeek на 30k-датасеті. Підстава для жорстких порогів TTR ±15% і Simpson's D ±20% у Stage 3.
+
+### Зовнішній валідатор для точних чисел
+
+Скіл рахує метрики (stdDev, TTR, Simpson's D) через LLM-обчислення, що достатньо для практичних рішень, але не претендує на лабораторну точність. Для зовнішньої перевірки рекомендується **StyloMetrix** (Okulska, Stetsenko et al. 2023, arXiv:2309.12810) — open-source бібліотека з підтримкою **української, польської, англійської, російської** мов і ~120 готових стилометричних векторів. Її можна підняти локально й прогнати оригінал + рерайт, щоб отримати незалежні числа.
 
 ---
 
