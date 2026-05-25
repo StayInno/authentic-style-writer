@@ -306,9 +306,52 @@ Coverage below 80% means the rewrite is incomplete — return to Stage 3.
 
 ---
 
+## Stage 3.7 — REFINE_LOOP
+
+Take the rewrite that passed Stage 3.5 (call it `rewrite_v1`) and refine it through **up to 3 additional iterations**. Goal: catch AI signals that survived the first pass — or new ones the rewrite itself introduced. Output under `## Refinement Log`.
+
+### Iteration procedure
+
+For each iteration `N` ∈ {v2, v3, v4} (v1 already exists):
+
+1. **Re-analyze `rewrite_v(N-1)`** with the same instruments as Stage 2a:
+   - `AI-likeness score: X/10` (calibration in [ai-signals.md](ai-signals.md))
+   - `stdDev | TTR | Simpson's D` (2 decimals; TTR / Simpson's D on content-words only)
+   - Compact signal table: only rows for signal types from [ai-signals.md](ai-signals.md) that still appear. Empty = clean.
+
+2. **Early-exit conditions** — stop the loop if any one holds:
+   - (a) `AI-likeness score ≤ 2/10` AND signal table is empty.
+   - (b) The new signal set is identical to the previous iteration's — refinement has plateaued and another pass will not help.
+   - (c) All three stylometry metrics are within tolerance AND no signal type appears more than once.
+
+3. **Mini Replacement Map** — for each residual signal produce a concrete replacement (same format as Stage 2.5). Address only signals that newly appeared or survived from the previous pass. If a corpus exists, prefer phrases from the Lexical inventory.
+
+4. **Mini Rewrite** — apply the mini Replacement Map to `rewrite_v(N-1)` to produce `rewrite_v(N)`. All Stage 3 hard rules still apply (`DO NOT INTRODUCE`, no hallucinated style, `CARRY FORWARD` invariants preserved). Run a compact stylometry check (3.5b only — full Trace already passed for v1).
+
+### Refinement Log table
+
+Record every iteration that actually ran. For iterations that did not run (early-exit fired), write a single row stating the exit condition.
+
+| Iteration | AI score | stdDev | TTR | Simpson's D | Residual signals | Action taken |
+|-----------|---------:|-------:|----:|------------:|------------------|--------------|
+| v1 (Stage 3 output) | _ | _ | _ | _ | _ | — |
+| v2 | _ | _ | _ | _ | _ | _ |
+| v3 | _ | _ | _ | _ | _ | _ |
+| v4 | _ | _ | _ | _ | _ | _ |
+
+If exit fires after v2: drop the v3/v4 rows and add a one-liner `(exited after v2: <condition a/b/c>)`.
+
+### Final pick
+
+Choose the version with the **lowest AI-likeness score**. Tie-breaker: prefer the later version (carries more refinement). Output the chosen text under `## Final Rewrite` with a one-line note: `Picked vN (score X/10).` Stage 4 evaluates the **Final Rewrite**, not v1.
+
+Hard cap: never produce more than v4. If after v4 the score has not improved over v1, output v1 as the Final Rewrite and note `Refinement did not converge — kept v1.`
+
+---
+
 ## Stage 4 — EVALUATE
 
-Output under heading `## Evaluation`. Scores must be derived from the Trace, not from feeling.
+Output under heading `## Evaluation`. **Evaluate the Final Rewrite picked in Stage 3.7, not the v1 rewrite.** Scores must be derived from the Trace and Refinement Log, not from feeling.
 
 | Dimension | Score | Derivation |
 |-----------|-------|------------|
@@ -339,8 +382,10 @@ If `Style match < 7` (Format B): `⚠ Style miss: [which brief rules failed]` an
 2. Style Brief  *(Format B only)*
 3. Analysis
 4. Replacement Map
-5. Rewritten Version
+5. Rewritten Version  *(v1 — output of Stage 3)*
 6. Trace
-7. Evaluation
+7. Refinement Log  *(iterations v2–v4 with early-exit notes)*
+8. Final Rewrite  *(the picked version; this is what Stage 4 evaluates)*
+9. Evaluation
 
 Keep each section under its heading. Do not collapse or reorder.
