@@ -380,6 +380,8 @@ For each iteration `N` ∈ {v2, v3, v4} (v1 already exists):
 
 4. **Mini Rewrite** — apply the mini Replacement Map to `rewrite_v(N-1)` to produce `rewrite_v(N)`. All Stage 3 hard rules still apply (`DO NOT INTRODUCE`, no hallucinated style, `CARRY FORWARD` invariants preserved). Run a compact stylometry check (3.5b only — full Trace already passed for v1).
 
+   **Surgical edit rule (hard):** change only the exact spans identified in the Mini Replacement Map. Every sentence not touched by the map must be copied verbatim from `rewrite_v(N-1)` — character for character. Do not rephrase, smooth, or "improve" surrounding sentences. Do not rewrite a paragraph to make an edit flow better. If an edit cannot be applied without touching adjacent text, note it as `skipped — would require surrounding rewrite` and leave the original. Introducing a new device (em-dash, semicolon, subheading, list) in an untouched sentence is a defect equal to introducing it in Stage 3.
+
 ### Refinement Log table
 
 Record every iteration that actually ran. For iterations that did not run (early-exit fired), write a single row stating the exit condition.
