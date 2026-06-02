@@ -1,7 +1,7 @@
 ---
 name: authentic-style-writer
-description: Analyze text for AI-like writing signals, score them, then rewrite the text in an authentic human voice. Use when the user wants to reduce generic assistant-like patterns, make AI-generated text sound natural, or get a writing quality diagnosis. Trigger phrases: "authentic-style-writer", "make this less AI", "rewrite in my style", "check if this sounds AI-written", "reduce AI patterns".
-argument-hint: [draft text] or ===MY WRITING=== ... ===DRAFT=== ...
+description: Analyze text for AI-like writing signals, score them, then rewrite the text in an authentic human voice. Use when the user wants to reduce generic assistant-like patterns, make AI-generated text sound natural, or get a writing quality diagnosis. Trigger phrases: "authentic-style-writer", "make this less AI", "rewrite in my style", "check if this sounds AI-written", "reduce AI patterns", "save my style", "use saved style".
+argument-hint: [draft] or ===MY WRITING=== ... ===DRAFT=== ... or ===USE STYLE=== name ===DRAFT=== ... or ===STYLE CARD=== ... ===DRAFT=== ...
 ---
 
 # Authentic Style Writer
@@ -20,10 +20,10 @@ You may **not** introduce a punctuation mark, sentence shape, opening, closing, 
 
 ## Input parsing
 
-Check `$ARGUMENTS` for one of two formats:
+Check `$ARGUMENTS` for one of four formats. **Priority order: D > C > B > A** (a saved-style format takes precedence even if `===MY WRITING===` also appears).
 
 **Format A — draft only:**
-The entire argument is the text to process. Skip LEARN_STYLE and STYLE_BRIEF. Target = general human writing norms.
+The entire argument is the text to process. Skip LEARN_STYLE, STYLE_BRIEF, and STYLE_PERSIST. Target = general human writing norms.
 
 **Format B — corpus + draft:**
 ```
@@ -33,9 +33,33 @@ The entire argument is the text to process. Skip LEARN_STYLE and STYLE_BRIEF. Ta
 [text to analyze and rewrite]
 ```
 
-When Format B is detected, count the samples and run LEARN_STYLE → STYLE_BRIEF before ANALYZE.
+When Format B is detected, count the samples and run LEARN_STYLE → STYLE_BRIEF → STYLE_PERSIST before ANALYZE.
 
-If `$ARGUMENTS` is empty, ask the user to paste the text.
+**Format C — load saved style by name + draft:**
+```
+===USE STYLE=== <slug>
+===DRAFT===
+[text to analyze and rewrite]
+```
+
+Resolution procedure (do these in order — stop at the first that succeeds):
+1. Try to `Read` the file `.claude/skills/authentic-style-writer/styles/<slug>.md` (relative to the project root).
+2. If that fails, try `~/.claude/skills/authentic-style-writer/styles/<slug>.md` (user-level storage).
+3. If both fail: list available slugs by attempting to `Read` `.claude/skills/authentic-style-writer/styles/INDEX.md`. Show the user the list and ask them to either retype the correct slug or paste the Style Card using Format D.
+
+On success: parse the saved file's Style Card JSON and Style Brief, output them under `## Style Card (loaded: <slug>)` and `## Style Brief (loaded: <slug>)` headings, then skip LEARN_STYLE / STYLE_BRIEF / STYLE_PERSIST and jump to BOUNDARY_DETECTION → ANALYZE.
+
+**Format D — pasted Style Card + draft (for environments without file access, e.g. claude.ai):**
+```
+===STYLE CARD===
+[the full markdown that STYLE_PERSIST previously emitted — frontmatter + Style Card JSON + Style Brief]
+===DRAFT===
+[text to analyze and rewrite]
+```
+
+Treat the pasted block as if it were just loaded from disk in Format C: re-emit it under `## Style Card (pasted)` / `## Style Brief (pasted)` headings, then skip LEARN_STYLE / STYLE_BRIEF / STYLE_PERSIST and jump to BOUNDARY_DETECTION → ANALYZE.
+
+**Empty input:** ask the user to paste either a draft (Format A), a corpus + draft (Format B), or a saved-style invocation (Format C / D).
 
 ---
 
@@ -213,6 +237,71 @@ DO NOT USE (avoid_patterns from card):
 Each APPLY rule must be **actionable** ("use connector «ну і», «короче» — 4/6 samples") not vague ("conversational tone"). Each IMITATE entry must quote a literal example from the corpus, so the rewrite has a concrete template to copy. Each DO NOT INTRODUCE entry must reference a count of 0 or near-0 in the corpus.
 
 **Why IMITATE exists:** removing AI signals reliably "moves away" from machine style but does not reliably "move toward" the target author (Patel et al., STYLL, 2024). Without explicit syntactic templates the rewrite drifts to generic-human writing instead of *this* author. IMITATE forces the rewrite to copy actual sentence shapes from the corpus.
+
+---
+
+## Stage 1.6 — STYLE_PERSIST  *(Format B only)*
+
+Offer to save the freshly built Style Card + Style Brief so it can be reused via Format C / D in future runs.
+
+### Procedure
+
+1. **Ask the user once, in one line:**
+   > "Зберегти цей стиль для повторного використання? Якщо так — введіть коротку назву (напр. `formal-blog`, `my-telegram`). Введіть `ні` щоб пропустити."
+
+   If the user already supplied a name in the original prompt (e.g. `===SAVE AS=== my-blog` anywhere before `===DRAFT===`), use it directly and skip the question. Treat `ні`, `no`, `skip`, `пропустити`, or an empty response as a decline — write a single line `Style not saved.` and continue to Stage 1.7.
+
+2. **Slugify the name:** lowercase, replace whitespace and underscores with `-`, strip everything that is not `[a-z0-9-]`, collapse repeated dashes, trim leading/trailing dashes. Reject empty slugs or slugs that are pure numbers — re-ask once.
+
+3. **Build the save artifact.** Output it under heading `## Saved Style — <slug>` as a single fenced markdown block. This block is the user's persistent copy in environments without file access, **and** the literal bytes written to disk in environments with file access. Format:
+
+   ````markdown
+   ```markdown
+   ---
+   name: <slug>
+   created: <YYYY-MM-DD>
+   samples_count: <N>
+   corpus_word_count: <W>
+   burstiness_stdev: <X.X>
+   corpus_ttr: <X.XX>
+   corpus_simpsons_d: <X.XX>
+   limitations: "<one-line summary; empty string if none>"
+   ---
+
+   ## Style Card
+
+   <verbatim Style Card section from Stage 1, including the evidence table, Lexical inventory, and the Style Card JSON>
+
+   ## Style Brief
+
+   <verbatim Style Brief section from Stage 1.5>
+   ```
+   ````
+
+4. **Attempt to write to disk (Claude Code path).** Try `Write` to `.claude/skills/authentic-style-writer/styles/<slug>.md` with the content of the inner fenced block (without the outer ```markdown fence — that fence is only for display). If the project-level path is unavailable, fall back to `~/.claude/skills/authentic-style-writer/styles/<slug>.md`.
+
+   - On success: also append `- <slug> — <one-line description, e.g. "5 samples, 2,450 words, telegram posts">` to `.claude/skills/authentic-style-writer/styles/INDEX.md` (create the file with a single `# Saved styles` heading if absent; do not duplicate an existing slug — overwrite its line instead). Then print:
+     > `Saved to .claude/skills/authentic-style-writer/styles/<slug>.md. Reuse with:`
+     > ` ===USE STYLE=== <slug>`
+     > ` ===DRAFT=== ...`
+
+   - On failure (no write capability — typical for claude.ai's sandboxed runtime, or permission denied): print exactly:
+     > `File write not available in this environment. To persist this style:`
+     > `  1. Copy the entire fenced block above.`
+     > `  2. Paste it into a Project (claude.ai → Project → Instructions) so it's available in future chats, OR save it as a local .md file.`
+     > `  3. Reuse by pasting the block back as:`
+     > `     ===STYLE CARD===`
+     > `     <the block contents>`
+     > `     ===DRAFT===`
+     > `     ...`
+
+5. **Never block the pipeline on save failure.** Whether or not the write succeeded, the artifact has been shown — proceed to Stage 1.7.
+
+### Naming hygiene
+
+- Slugs are namespaces, not labels. Encourage names like `formal-blog`, `telegram-2024`, `client-acme-newsletter`. Discourage `style1`, `temp`, `test`.
+- Overwriting an existing slug is allowed but must be flagged: if `Read` of the target path succeeds before `Write`, print `Overwriting existing style "<slug>" (created <old date>).` first.
+- A saved style's `corpus_word_count` is frozen at save time. If the user later re-runs Format B with more samples and the same intended name, they must explicitly re-save (this skill does not auto-merge corpora).
 
 ---
 
@@ -446,15 +535,16 @@ These mappings are heuristic, not measured against a specific detector. They anc
 
 ## Output order
 
-1. Style Card  *(Format B only)*
-2. Style Brief  *(Format B only)*
-3. Boundary Detection  *(both formats, only when draft ≥ 400 words and ≥ 3 paragraphs)*
-4. Analysis
-5. Replacement Map
-6. Rewritten Version  *(v1 — output of Stage 3)*
-7. Trace
-8. Refinement Log  *(iterations v2–v4 with early-exit notes)*
-9. Final Rewrite  *(the picked version; this is what Stage 4 evaluates)*
-10. Evaluation
+1. Style Card  *(Format B only; or `Style Card (loaded)` / `Style Card (pasted)` for Formats C / D)*
+2. Style Brief  *(Format B only; or `Style Brief (loaded)` / `Style Brief (pasted)` for Formats C / D)*
+3. Saved Style — `<slug>`  *(Format B only, after STYLE_PERSIST runs; one line `Style not saved.` if declined)*
+4. Boundary Detection  *(all formats, only when draft ≥ 400 words and ≥ 3 paragraphs)*
+5. Analysis
+6. Replacement Map
+7. Rewritten Version  *(v1 — output of Stage 3)*
+8. Trace
+9. Refinement Log  *(iterations v2–v4 with early-exit notes)*
+10. Final Rewrite  *(the picked version; this is what Stage 4 evaluates)*
+11. Evaluation
 
 Keep each section under its heading. Do not collapse or reorder.
