@@ -4,7 +4,7 @@ A Claude Code skill that analyzes text for AI-like writing patterns, scores them
 
 ## What it does
 
-- Detects 14 types of AI-typical signals (hedge clusters, assistant openers, abstract filler, forced symmetry, redundancy, pronoun-deficit, syntactic-repetition, etc.)
+- Detects 16 types of AI-typical signals (hedge clusters, assistant openers, abstract filler, forced symmetry, redundancy, pronoun-deficit, syntactic-repetition, list-cram, register-mix, etc.)
 - Scores AI-likeness on a 0–10 scale
 - Rewrites toward authentic, specific, human-sounding prose
 - Optionally learns your personal style from writing samples
@@ -27,16 +27,13 @@ For an external validator with ~120 stylometric vectors and Ukrainian-language s
 
 ## Install
 
-**Option 1 — clone the repo into your project:**
+Just ask Claude Code to install it — e.g.:
 
-```bash
-git clone https://github.com/StayInno/authentic-style-writer.git
-cp -r authentic-style-writer/.claude/skills/authentic-style-writer .claude/skills/
-```
+> Install the authentic-style-writer skill from github.com/StayInno/authentic-style-writer
 
-**Option 2 — copy the skill folder directly:**
+It will fetch the skill and place it in your project's `.claude/skills/` directory for you.
 
-Copy `.claude/skills/authentic-style-writer/` into your project's `.claude/skills/` directory. Claude Code picks it up on the next session start.
+Prefer to do it by hand? Copy `.claude/skills/authentic-style-writer/` into your project's `.claude/skills/` directory. Claude Code picks it up on the next session start.
 
 ## Usage
 
