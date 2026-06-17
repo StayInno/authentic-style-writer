@@ -357,7 +357,7 @@ One-sentence verdict.
 | # | Signal type | Excerpt from draft | Why it's a problem |
 |---|-------------|--------------------|--------------------|
 
-Signal types: see [ai-signals.md](ai-signals.md) — `hedge-cluster`, `over-explanation`, `even-pacing`, `low-lexical-diversity`, `redundancy`, `abstract-filler`, `assistant-opener`, `comprehensiveness-creep`, `passive-excess`, `pronoun-deficit`, `transition-cliche`, `symmetry-forced`, `syntactic-repetition`, `enthusiasm-flatten`.
+Signal types: see [ai-signals.md](ai-signals.md) — `hedge-cluster`, `over-explanation`, `even-pacing`, `low-lexical-diversity`, `redundancy`, `abstract-filler`, `assistant-opener`, `comprehensiveness-creep`, `passive-excess`, `pronoun-deficit`, `transition-cliche`, `symmetry-forced`, `syntactic-repetition`, `enthusiasm-flatten`, `list-cram`, `register-mix`.
 
 ### 2c. Style mismatch  *(Format B only)*
 
@@ -393,11 +393,14 @@ Execution order:
 3. Enforce every `CARRY FORWARD` invariant from the Style Brief (e.g. if the brief says "ends with CTA, 6/6", the rewrite must end with a CTA).
 4. Match TARGET STYLOMETRY:
    - Sentence-length stdDev within ±1.5 of corpus stdDev (or ≥ 5 in Format A). If too even, break up a long sentence with a short punchy one or merge two short ones into a long one.
+   - **Per-paragraph, not just global.** Burstiness must hold in *every* paragraph of 4+ sentences — a single dense closing paragraph collapses to machine-paced stdDev even when the document mean looks fine, and detectors flag exactly that paragraph. Never compress a multi-item list into one compound sentence (`list-cram`); split it into short separate sentences.
    - TTR within ±15% of `corpus_ttr` (Format B only).
    - Simpson's D within ±20% of `corpus_simpsons_d` (Format B only).
    If TTR too low or Simpson's D too high: replace repeated content-words with synonyms or restructure to remove the repetition. Prefer vocabulary from the Lexical inventory before reaching for outside synonyms.
 5. Enforce every `DO NOT INTRODUCE` constraint. Re-read the rewrite once and remove any forbidden device that slipped in.
 6. Preserve meaning. No new claims, no removed claims.
+
+**Idiolect, not just metrics.** Matching the stylometry numbers is necessary but not sufficient — translation-clean, register-neutral prose still reads synthetic even when stdDev/TTR pass. Reach for the language's native particles and discourse markers, natural (non-rigid) word order, and concrete framing over abstract nominalizations. The highest-yield single move on flagged text is reframing a bare statistic sentence through a person ("X is 11% of the dataset." → "I looked at the numbers: it's already 11%, double last year."). Hold one register throughout (`register-mix`). In Format B, use only devices the corpus actually shows.
 
 Hard rules:
 - Do not add an em-dash, semicolon, ellipsis, bulleted list, or subheading if it is on the `DO NOT INTRODUCE` list.
@@ -426,6 +429,8 @@ Measure the rewrite's sentence-length stdDev, TTR, and Simpson's D (content-word
 | Sentence-length stdDev | (corpus stdDev, or ≥ 5 in Format A) | ___ | yes / no (±1.5) |
 | TTR | (`corpus_ttr`, Format B only) | ___ | yes / no (±15%) |
 | Simpson's D | (`corpus_simpsons_d`, Format B only) | ___ | yes / no (±20%) |
+
+Also report the **weakest-paragraph stdDev** (lowest stdDev among paragraphs of 4+ sentences). If it falls below 1.5, that paragraph is machine-paced (`list-cram`) even when the document stdDev passes — return to Stage 3 and break it up before continuing.
 
 If any row is `no`: return to Stage 3 and fix the offending dimension before continuing. For stdDev, vary sentence length. For TTR / Simpson's D, replace repeated content-words with synonyms (prefer Lexical inventory).
 

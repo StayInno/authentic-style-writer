@@ -202,6 +202,30 @@ Reference for the ANALYZE stage. Each signal type includes a definition, typical
 
 ---
 
+## list-cram
+
+**Definition:** Several distinct points or facts packed into one long compound sentence with a chain of coordinate and subordinate clauses ("you do X and stand up Y, which has either A or B"). Collapses burstiness **inside a paragraph**: even when the document-wide stdDev is fine, this one dense paragraph is what a detector flags (observed empirically — a clean opening passes while the final list-cram paragraph reads as AI).
+
+**Examples:**
+- "Search stops working: you have to manually disable WebSearch and stand up a separate Brave Search server, which itself either has limits or costs money."
+- "You lose native features, the built-in connectors stop working, and search needs a separate server which itself has limits or costs money."
+
+**Detection cues:** One sentence carries ≥ 3 separate claims joined by commas / `and` / `which` / `so`. Test: if the sentence splits into 3+ standalone short sentences with no loss of meaning, it is list-cram. Fix: break it into short sentences (sharply raises local stdDev). Distinct from `symmetry-forced`, where the problem is an imposed list instead of prose.
+
+---
+
+## register-mix
+
+**Definition:** Inconsistent register or form of address within a single text — formal next to informal second person (in languages that mark a T–V distinction), or a conversational tone next to bureaucratic phrasing. LLMs often stitch text from fragments of different register, and the seam reads as machine-made.
+
+**Examples:**
+- A casual "you won't even run it locally" in one sentence and a formal "kindly leave a comment" in the next
+- A colloquial verb in one clause and a stiff nominalized "unpredictable behavior is observed" in the adjacent one
+
+**Detection cues:** A shift in second-person formality, or a jump in register (slang ↔ bureaucratese) with no rhetorical reason. Fix: pick one register and hold it across the whole text.
+
+---
+
 ## Score calibration reference
 
 | Score | Description |
